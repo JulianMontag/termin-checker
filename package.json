@@ -6,6 +6,7 @@
     "check": "node check.js"
   },
   "dependencies": {
+    "nodemailer": "latest",
     "playwright": "latest"
   }
 }
