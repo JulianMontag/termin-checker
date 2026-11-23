@@ -11,6 +11,35 @@ const nodemailer = require("nodemailer");
     throw new Error("TEMPUS_URL fehlt.");
   }
 
+  if (!gmxEmail || !gmxPassword || !alertEmail) {
+    throw new Error("GMX_EMAIL, GMX_PASSWORD oder ALERT_EMAIL fehlt.");
+  }
+
+  // Reiner Mail-Test
+  if (process.env.TEST_EMAIL === "true") {
+    console.log("Starte GMX E-Mail-Test...");
+
+    const transporter = nodemailer.createTransport({
+      host: "mail.gmx.net",
+      port: 465,
+      secure: true,
+      auth: {
+        user: gmxEmail,
+        pass: gmxPassword
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"Tempus Termin-Checker" <${gmxEmail}>`,
+      to: alertEmail,
+      subject: "Tempus Checker - Test erfolgreich",
+      text: "Die E-Mail-Benachrichtigung des Tempus Termin-Checkers funktioniert."
+    });
+
+    console.log("TEST-E-MAIL ERFOLGREICH VERSENDET");
+    return;
+  }
+
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
@@ -71,14 +100,6 @@ const nodemailer = require("nodemailer");
         }))
     );
 
-    console.log("=== GEFUNDENE KALENDERTAGE ===");
-
-    for (const day of days) {
-      console.log(
-        `${day.day} | class=${day.className} | decoration=${day.decoration} | clickable=${day.clickable}`
-      );
-    }
-
     const availableDays = days.filter(day =>
       !day.className.includes("nachvorlauftagen") &&
       day.decoration !== "line-through" &&
@@ -95,21 +116,11 @@ const nodemailer = require("nodemailer");
       return;
     }
 
-    console.log("!!! TERMIN VERFÜGBAR !!!");
-
     const availableDayNumbers = availableDays
       .map(day => day.day)
       .join(", ");
 
-    console.log(`Verfügbare Tage: ${availableDayNumbers}`);
-
-    if (!gmxEmail || !gmxPassword || !alertEmail) {
-      throw new Error(
-        "GMX_EMAIL, GMX_PASSWORD oder ALERT_EMAIL fehlt."
-      );
-    }
-
-    console.log("7. Sende Benachrichtigung über GMX...");
+    console.log(`TERMIN VERFÜGBAR: ${availableDayNumbers}`);
 
     const transporter = nodemailer.createTransport({
       host: "mail.gmx.net",
@@ -124,32 +135,4 @@ const nodemailer = require("nodemailer");
     await transporter.sendMail({
       from: `"Tempus Termin-Checker" <${gmxEmail}>`,
       to: alertEmail,
-      subject: "Termin beim Standesamt verfügbar",
-      text: [
-        "Der Tempus Termin-Checker hat einen verfügbaren Termin gefunden.",
-        "",
-        `Verfügbare Kalendertage: ${availableDayNumbers}`,
-        "",
-        "Terminbuchung öffnen:",
-        url,
-        "",
-        "Der Checker bucht den Termin nicht automatisch."
-      ].join("\n")
-    });
-
-    console.log("E-Mail wurde erfolgreich versendet.");
-
-  } catch (error) {
-    console.error("FEHLER:", error);
-
-    await page.screenshot({
-      path: "tempus-error.png",
-      fullPage: true
-    });
-
-    process.exitCode = 1;
-
-  } finally {
-    await browser.close();
-  }
-})();
+      subject: "Termin beim
