@@ -1,10 +1,17 @@
-name: Tempus Mail Test
+name: Tempus Termin Checker
 
 on:
   workflow_dispatch:
 
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+
 permissions:
   contents: read
+
+concurrency:
+  group: tempus-termin-checker
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -22,9 +29,24 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm install
 
-      - name: GMX Mail testen
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Tempus prüfen
         env:
+          TEMPUS_URL: ${{ secrets.TEMPUS_URL }}
           GMX_EMAIL: ${{ secrets.GMX_EMAIL }}
           GMX_PASSWORD: ${{ secrets.GMX_PASSWORD }}
           ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         run: npm run check
+
+      - name: Screenshot speichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tempus-screenshot
+          path: |
+            tempus-calendar.png
+            tempus-error.png
+          if-no-files-found: ignore
+          retention-days: 3
