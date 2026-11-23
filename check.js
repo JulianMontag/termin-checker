@@ -1,7 +1,11 @@
 const { chromium } = require("playwright");
+const nodemailer = require("nodemailer");
 
 (async () => {
   const url = process.env.TEMPUS_URL;
+  const gmxEmail = process.env.GMX_EMAIL;
+  const gmxPassword = process.env.GMX_PASSWORD;
+  const alertEmail = process.env.ALERT_EMAIL;
 
   if (!url) {
     throw new Error("TEMPUS_URL fehlt.");
@@ -12,34 +16,44 @@ const { chromium } = require("playwright");
 
   try {
     console.log("1. Öffne Tempus...");
+
     await page.goto(url, {
       waitUntil: "networkidle",
       timeout: 60000
     });
 
     console.log("2. Wähle Anmeldung Eheschließung = 1 Paar...");
+
     await page
       .locator("#EHE_DT-11887-mittermin")
       .selectOption({ label: "1 Paar" });
 
     console.log("3. Klicke Termin vereinbaren...");
+
     await Promise.all([
       page.waitForLoadState("networkidle"),
-      page.getByRole("button", { name: "Termin vereinbaren" }).click()
+      page
+        .getByRole("button", { name: "Termin vereinbaren" })
+        .click()
     ]);
 
     console.log("4. Bestätige Hinweis...");
+
     await page.locator("#mitbringsel0").check();
 
     console.log("5. Klicke Hinweise zur Kenntnis genommen...");
+
     await Promise.all([
       page.waitForLoadState("networkidle"),
-      page.getByRole("button", {
-        name: "Ich habe die Hinweise zur Kenntnis genommen"
-      }).click()
+      page
+        .getByRole("button", {
+          name: "Ich habe die Hinweise zur Kenntnis genommen"
+        })
+        .click()
     ]);
 
     console.log("6. Warte auf Terminkalender...");
+
     await page.waitForSelector("table.cal", {
       timeout: 30000
     });
@@ -71,23 +85,59 @@ const { chromium } = require("playwright");
       day.clickable
     );
 
-    if (availableDays.length > 0) {
-      console.log("!!! TERMIN VERFÜGBAR !!!");
-
-      for (const day of availableDays) {
-        console.log(`Verfügbarer Tag: ${day.day}`);
-      }
-    } else {
-      console.log("Keine verfügbaren Termine gefunden.");
-    }
-
     await page.screenshot({
       path: "tempus-calendar.png",
       fullPage: true
     });
 
-    console.log("Screenshot gespeichert.");
-    console.log("Test erfolgreich abgeschlossen.");
+    if (availableDays.length === 0) {
+      console.log("Keine verfügbaren Termine gefunden.");
+      return;
+    }
+
+    console.log("!!! TERMIN VERFÜGBAR !!!");
+
+    const availableDayNumbers = availableDays
+      .map(day => day.day)
+      .join(", ");
+
+    console.log(`Verfügbare Tage: ${availableDayNumbers}`);
+
+    if (!gmxEmail || !gmxPassword || !alertEmail) {
+      throw new Error(
+        "GMX_EMAIL, GMX_PASSWORD oder ALERT_EMAIL fehlt."
+      );
+    }
+
+    console.log("7. Sende Benachrichtigung über GMX...");
+
+    const transporter = nodemailer.createTransport({
+      host: "mail.gmx.net",
+      port: 465,
+      secure: true,
+      auth: {
+        user: gmxEmail,
+        pass: gmxPassword
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"Tempus Termin-Checker" <${gmxEmail}>`,
+      to: alertEmail,
+      subject: "Termin beim Standesamt verfügbar",
+      text: [
+        "Der Tempus Termin-Checker hat einen verfügbaren Termin gefunden.",
+        "",
+        `Verfügbare Kalendertage: ${availableDayNumbers}`,
+        "",
+        "Terminbuchung öffnen:",
+        url,
+        "",
+        "Der Checker bucht den Termin nicht automatisch."
+      ].join("\n")
+    });
+
+    console.log("E-Mail wurde erfolgreich versendet.");
 
   } catch (error) {
     console.error("FEHLER:", error);
