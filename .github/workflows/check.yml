@@ -1,0 +1,38 @@
+name: Tempus Termin Checker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Abhängigkeiten installieren
+        run: npm install
+
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Tempus prüfen
+        env:
+          TEMPUS_URL: ${{ secrets.TEMPUS_URL }}
+        run: npm run check
+
+      - name: Screenshot speichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tempus-screenshot
+          path: |
+            tempus-calendar.png
+            tempus-error.png
+          if-no-files-found: ignore
