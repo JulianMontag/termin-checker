@@ -6,6 +6,6 @@
     "check": "node check.js"
   },
   "dependencies": {
-    "playwright": "1.57.0"
+    "playwright": "latest"
   }
 }
