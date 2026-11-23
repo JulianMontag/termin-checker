@@ -53,7 +53,7 @@ const { chromium } = require("playwright");
           day: el.innerText.trim(),
           className: el.className,
           decoration: window.getComputedStyle(el).textDecorationLine,
-          html: el.outerHTML
+          clickable: !!el.querySelector("a, button")
         }))
     );
 
@@ -61,8 +61,24 @@ const { chromium } = require("playwright");
 
     for (const day of days) {
       console.log(
-        `${day.day} | class=${day.className} | decoration=${day.decoration}`
+        `${day.day} | class=${day.className} | decoration=${day.decoration} | clickable=${day.clickable}`
       );
+    }
+
+    const availableDays = days.filter(day =>
+      !day.className.includes("nachvorlauftagen") &&
+      day.decoration !== "line-through" &&
+      day.clickable
+    );
+
+    if (availableDays.length > 0) {
+      console.log("!!! TERMIN VERFÜGBAR !!!");
+
+      for (const day of availableDays) {
+        console.log(`Verfügbarer Tag: ${day.day}`);
+      }
+    } else {
+      console.log("Keine verfügbaren Termine gefunden.");
     }
 
     await page.screenshot({
