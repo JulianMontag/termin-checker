@@ -1,0 +1,11 @@
+{
+  "name": "termin-checker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "check": "node check.js"
+  },
+  "dependencies": {
+    "playwright": "1.57.0"
+  }
+}
