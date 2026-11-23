@@ -31,4 +31,59 @@ const { chromium } = require("playwright");
     console.log("4. Bestätige Hinweis...");
     await page.locator("#mitbringsel0").check();
 
-    console.log("5. Klicke Hinweise zur Kenntnis genommen..."
+    console.log("5. Klicke Hinweise zur Kenntnis genommen...");
+    await Promise.all([
+      page.waitForLoadState("networkidle"),
+      page.getByRole("button", {
+        name: "Ich habe die Hinweise zur Kenntnis genommen"
+      }).click()
+    ]);
+
+    console.log("6. Warte auf Terminkalender...");
+    await page.waitForSelector("table.cal", {
+      timeout: 30000
+    });
+
+    console.log("Kalender wurde erfolgreich erreicht.");
+
+    const days = await page.locator("table.cal td").evaluateAll(elements =>
+      elements
+        .filter(el => /^\d{1,2}$/.test(el.innerText.trim()))
+        .map(el => ({
+          day: el.innerText.trim(),
+          className: el.className,
+          decoration: window.getComputedStyle(el).textDecorationLine,
+          html: el.outerHTML
+        }))
+    );
+
+    console.log("=== GEFUNDENE KALENDERTAGE ===");
+
+    for (const day of days) {
+      console.log(
+        `${day.day} | class=${day.className} | decoration=${day.decoration}`
+      );
+    }
+
+    await page.screenshot({
+      path: "tempus-calendar.png",
+      fullPage: true
+    });
+
+    console.log("Screenshot gespeichert.");
+    console.log("Test erfolgreich abgeschlossen.");
+
+  } catch (error) {
+    console.error("FEHLER:", error);
+
+    await page.screenshot({
+      path: "tempus-error.png",
+      fullPage: true
+    });
+
+    process.exitCode = 1;
+
+  } finally {
+    await browser.close();
+  }
+})();
