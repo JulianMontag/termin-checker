@@ -3,9 +3,19 @@ name: Tempus Termin Checker
 on:
   workflow_dispatch:
 
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tempus-termin-checker
+  cancel-in-progress: false
+
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Repository laden
@@ -25,6 +35,9 @@ jobs:
       - name: Tempus prüfen
         env:
           TEMPUS_URL: ${{ secrets.TEMPUS_URL }}
+          GMX_EMAIL: ${{ secrets.GMX_EMAIL }}
+          GMX_PASSWORD: ${{ secrets.GMX_PASSWORD }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         run: npm run check
 
       - name: Screenshot speichern
@@ -36,3 +49,4 @@ jobs:
             tempus-calendar.png
             tempus-error.png
           if-no-files-found: ignore
+          retention-days: 3
